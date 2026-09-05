@@ -9,7 +9,7 @@ Um jogo web onde o jogador escolhe uma classe de RPG (mago, guerreiro, ninja, pa
 ## Roadmap
 
 - [x] **Fase 1** — Protótipo em terminal: classes Player e Enemy, inimigo se move e é derrotado
-- [ ] **Fase 2** — Boneco se movendo na tela (Flask + Canvas + teclado)
+- [x] **Fase 2** — Boneco se movendo na tela (Flask + Canvas + teclado)
 - [ ] **Fase 3** — Inimigos no frontend
 - [ ] **Fase 4** — Sistema de dano e morte
 - [ ] **Fase 5** — Classes de RPG e upgrades

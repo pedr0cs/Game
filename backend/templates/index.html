@@ -8,29 +8,72 @@
     <script>
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
+    let posJogador = {x: 175, y: 175};
+    let posInimigo = {x: 300, y: 300};
+    const teclas = {cima: false, baixo: false, esquerda: false, direita: false}
+
+
+    function desenhar() {
+    if (!posJogador || !posInimigo) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'black';
+    ctx.fillRect(posJogador.x, posJogador.y, 30, 30);
+    ctx.fillStyle = 'red';
+    ctx.fillRect(posInimigo.x, posInimigo.y, 30, 30);
+}
 
     fetch('http://localhost:5000/posicao')
         .then(res => res.json())
         .then(pos => {
-            ctx.fillRect(pos.x, pos.y, 30, 30);
+            posJogador = pos;
+            desenhar();
         });
 
-    document.addEventListener('keydown', function(e) {
-    let dx = 0, dy = 0;
-    if (e.key === 'ArrowLeft' || e.key === 'a') dx = -10;
-    if (e.key === 'ArrowRight' || e.key === 'd') dx = 10;
-    if (e.key === 'ArrowUp' || e.key === 'w') dy = -10;
-    if (e.key === 'ArrowDown' || e.key === 's') dy = 10;
+    fetch('http://localhost:5000/posicao_enemy')
+        .then(res => res.json())
+        .then(pos => {
+            posInimigo = pos;
+            desenhar();
+        }); 
 
-    if (dx !== 0 || dy !== 0) {
-        fetch(`http://localhost:5000/move/${dx}/${dy}`)
-            .then(res => res.json())
-            .then(pos => {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.fillRect(pos.x, pos.y, 30, 30);
-            });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'w' || e.key === 'ArrowUp') teclas.cima = true;
+        if (e.key === 's' || e.key === 'ArrowDown') teclas.baixo = true;
+        if (e.key === 'a' || e.key === 'ArrowLeft') teclas.esquerda = true;
+        if (e.key === 'd' || e.key === 'ArrowRight') teclas.direita = true;
+    });
+
+    document.addEventListener('keyup', function(e) {
+        if (e.key === 'w' || e.key === 'ArrowUp') teclas.cima = false;
+        if (e.key === 's' || e.key === 'ArrowDown') teclas.baixo = false;
+        if (e.key === 'a' || e.key === 'ArrowLeft') teclas.esquerda = false;
+        if (e.key === 'd' || e.key === 'ArrowRight') teclas.direita = false;
+    });
+
+    function gameLoop() {
+        let dx = 0, dy = 0;
+        if (teclas.cima) dy = -5;
+        if (teclas.baixo) dy = 5;
+        if (teclas.esquerda) dx = -5;
+        if (teclas.direita) dx = 5;
+
+        if (dx !== 0 || dy !== 0) {
+            posJogador.x = Math.max(0, Math.min(posJogador.x + dx, 370));
+            posJogador.y = Math.max(0, Math.min(posJogador.y + dy, 370));
+            fetch(`http://localhost:5000/move/${dx}/${dy}`);
+
+            if (posInimigo.x < posJogador.x) posInimigo.x += 1;
+            else if (posInimigo.x > posJogador.x) posInimigo.x -= 1;
+
+            if (posInimigo.y < posJogador.y) posInimigo.y += 1;
+            else if (posInimigo.y > posJogador.y) posInimigo.y -= 1;
+        }
+
+        desenhar();
+        requestAnimationFrame(gameLoop);
     }
-});
+
+    requestAnimationFrame(gameLoop);
     </script>
 </body>
 </html>

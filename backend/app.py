@@ -3,6 +3,7 @@ from flask import Flask, render_template
 app = Flask(__name__)
 
 posicao = {'x': 175, 'y': 175}
+posicao_enemy = {'x': 300, 'y': 300}
 
 @app.route('/')
 def index():
@@ -20,6 +21,10 @@ def mover(dx, dy):
     posicao['x'] = max(0, min(posicao['x'], 370))
     posicao['y'] = max(0, min(posicao['y'], 370))
     return posicao
+
+@app.route('/posicao_enemy')
+def get_posicao_enemy():
+    return posicao_enemy
 
 if __name__ == "__main__":
     app.run(debug=True)

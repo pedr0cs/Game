@@ -10,7 +10,12 @@
     const ctx = canvas.getContext('2d');
     let posJogador = {x: 175, y: 175};
     let posInimigo = {x: 300, y: 300};
+    let hpInimigo = 3;
+    let ultimoAtaque = 0;
+    const cooldownAtaque = 500;
+    let projeteis = [];
     const teclas = {cima: false, baixo: false, esquerda: false, direita: false}
+    
 
 
     function desenhar() {
@@ -20,6 +25,10 @@
     ctx.fillRect(posJogador.x, posJogador.y, 30, 30);
     ctx.fillStyle = 'red';
     ctx.fillRect(posInimigo.x, posInimigo.y, 30, 30);
+    ctx.fillStyle = 'blue';
+    for (let p of projeteis) {
+        ctx.fillRect(p.x, p.y, 8, 8);
+    }
 }
 
     fetch('http://localhost:5000/posicao')
@@ -50,28 +59,61 @@
         if (e.key === 'd' || e.key === 'ArrowRight') teclas.direita = false;
     });
 
-    function gameLoop() {
-        let dx = 0, dy = 0;
-        if (teclas.cima) dy = -5;
-        if (teclas.baixo) dy = 5;
-        if (teclas.esquerda) dx = -5;
-        if (teclas.direita) dx = 5;
+    function gameLoop(agora) {
+    let dx = 0, dy = 0;
+    if (teclas.cima) dy = -5;
+    if (teclas.baixo) dy = 5;
+    if (teclas.esquerda) dx = -5;
+    if (teclas.direita) dx = 5;
 
-        if (dx !== 0 || dy !== 0) {
-            posJogador.x = Math.max(0, Math.min(posJogador.x + dx, 370));
-            posJogador.y = Math.max(0, Math.min(posJogador.y + dy, 370));
-            fetch(`http://localhost:5000/move/${dx}/${dy}`);
+    if (dx !== 0 || dy !== 0) {
+        posJogador.x = Math.max(0, Math.min(posJogador.x + dx, 370));
+        posJogador.y = Math.max(0, Math.min(posJogador.y + dy, 370));
+        fetch(`http://localhost:5000/move/${dx}/${dy}`);
+    }
 
-            if (posInimigo.x < posJogador.x) posInimigo.x += 1;
-            else if (posInimigo.x > posJogador.x) posInimigo.x -= 1;
+    // inimigo persegue sempre
+    if (posInimigo.x < posJogador.x) posInimigo.x += 1;
+    else if (posInimigo.x > posJogador.x) posInimigo.x -= 1;
 
-            if (posInimigo.y < posJogador.y) posInimigo.y += 1;
-            else if (posInimigo.y > posJogador.y) posInimigo.y -= 1;
+    if (posInimigo.y < posJogador.y) posInimigo.y += 1;
+    else if (posInimigo.y > posJogador.y) posInimigo.y -= 1;
+
+    if (agora - ultimoAtaque > cooldownAtaque) {
+        ultimoAtaque = agora;
+        projeteis.push({
+            x: posJogador.x + 15,
+            y: posJogador.y + 15,
+            dx: posInimigo.x - posJogador.x,
+            dy: posInimigo.y - posJogador.y
+        });
+    }
+
+    for (let i = projeteis.length - 1; i >= 0; i--) {
+        let p = projeteis[i];
+        let dist = Math.sqrt(p.dx * p.dx + p.dy * p.dy);
+        p.x += (p.dx / dist) * 5;
+        p.y += (p.dy / dist) * 5;
+
+        if (p.x < 0 || p.x > 400 || p.y < 0 || p.y > 400) {
+            projeteis.splice(i, 1);
+            continue;
         }
 
-        desenhar();
-        requestAnimationFrame(gameLoop);
+        if (p.x > posInimigo.x && p.x < posInimigo.x + 30 &&
+            p.y > posInimigo.y && p.y < posInimigo.y + 30) {
+            projeteis.splice(i, 1);
+            hpInimigo -= 1;
+            if (hpInimigo <= 0) {
+                posInimigo = {x: 300, y: 300};
+                hpInimigo = 3;
+            }
+        }
     }
+
+    desenhar();
+    requestAnimationFrame(gameLoop);
+}
 
     requestAnimationFrame(gameLoop);
     </script>

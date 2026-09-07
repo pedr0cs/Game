@@ -5,6 +5,10 @@ app = Flask(__name__)
 posicao = {'x': 175, 'y': 175}
 posicao_enemy = {'x': 300, 'y': 300}
 
+@app.route('/inicio')
+def inicio():
+    return render_template('inicio.html')
+
 @app.route('/')
 def index():
     return render_template('index.html')

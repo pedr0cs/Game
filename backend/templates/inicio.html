@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Joguinho</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: #0a0a0f;
+            color: #e8e8f0;
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 48px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        canvas#bg {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            opacity: 0.35;
+        }
+
+        .titulo, .placar, .acoes {
+            position: relative;
+            z-index: 1;
+        }
+
+        .titulo {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 2.8rem;
+            color: #ffffff;
+            letter-spacing: 2px;
+            text-shadow:
+                0 0 20px rgba(255,255,255,0.3),
+                0 0 60px rgba(120,80,255,0.4);
+            animation: pulsar 3s ease-in-out infinite;
+        }
+
+        @keyframes pulsar {
+            0%, 100% { text-shadow: 0 0 20px rgba(255,255,255,0.3), 0 0 60px rgba(120,80,255,0.4); }
+            50%       { text-shadow: 0 0 30px rgba(255,255,255,0.5), 0 0 80px rgba(120,80,255,0.7); }
+        }
+
+        .placar {
+            width: 360px;
+            background: rgba(19,19,31,0.85);
+            border: 1px solid #2a2a40;
+            border-radius: 4px;
+            padding: 24px 28px;
+            backdrop-filter: blur(4px);
+        }
+
+        .placar-titulo {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.6rem;
+            color: #6060a0;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+        }
+
+        .placar-lista { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+
+        .placar-item {
+            display: flex; align-items: center; gap: 16px;
+            font-size: 0.85rem; color: #a0a0c0;
+        }
+
+        .placar-pos {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.55rem; width: 24px;
+            text-align: right; color: #50508080;
+        }
+
+        .placar-nome { flex: 1; color: #c0c0e0; }
+
+        .placar-pontos {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.6rem; color: #8080ff;
+        }
+
+        .placar-vazio {
+            font-size: 0.8rem; color: #3a3a5a;
+            text-align: center; padding: 12px 0;
+        }
+
+        .acoes { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+
+        .btn-jogar {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.9rem;
+            background: #5050ff; color: #ffffff;
+            border: none; padding: 18px 48px;
+            border-radius: 2px; cursor: pointer;
+            letter-spacing: 1px;
+            transition: background 0.15s, transform 0.1s;
+        }
+
+        .btn-jogar:hover { background: #7070ff; transform: translateY(-2px); }
+        .btn-jogar:active { transform: translateY(0); }
+
+        .creditos { font-size: 0.72rem; color: #3a3a5a; letter-spacing: 0.5px; }
+        .creditos span { color: #5050a0; }
+    </style>
+</head>
+<body>
+
+    <canvas id="bg"></canvas>
+
+    <h1 class="titulo">JOGUINHO</h1>
+
+    <div class="placar">
+        <p class="placar-titulo">RECORDES</p>
+        <ul class="placar-lista" id="lista-recordes">
+            <li class="placar-vazio">nenhum recorde ainda</li>
+        </ul>
+    </div>
+
+    <div class="acoes">
+        <button class="btn-jogar" onclick="window.location.href='http://localhost:5000'">JOGAR</button>
+        <p class="creditos">feito por <span>pedr0cs</span></p>
+    </div>
+
+    <script>
+        // ── animação de fundo ──────────────────────────────────────────
+        const canvas = document.getElementById('bg');
+        const ctx = canvas.getContext('2d');
+
+        function resize() {
+            canvas.width  = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        const TAMANHO = 12;
+
+        // inimigos vermelhos vagando
+        const inimigos = Array.from({length: 8}, () => ({
+            x: Math.random() * window.innerWidth,
+            y: Math.random() * window.innerHeight,
+            vx: (Math.random() - 0.5) * 1.2,
+            vy: (Math.random() - 0.5) * 1.2,
+        }));
+
+        // projéteis azuis
+        const projeteis = [];
+
+        let tick = 0;
+
+        function dispararProjetil() {
+            // parte de um ponto aleatório da tela em direção a um inimigo aleatório
+            const origem = {
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height
+            };
+            const alvo = inimigos[Math.floor(Math.random() * inimigos.length)];
+            const dx = alvo.x - origem.x;
+            const dy = alvo.y - origem.y;
+            const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+            projeteis.push({
+                x: origem.x, y: origem.y,
+                vx: (dx / dist) * 4,
+                vy: (dy / dist) * 4,
+                vida: 80
+            });
+        }
+
+        function loop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            tick++;
+            if (tick % 30 === 0) dispararProjetil();
+
+            // move e desenha inimigos
+            ctx.fillStyle = '#ff4444';
+            for (const e of inimigos) {
+                e.x += e.vx;
+                e.y += e.vy;
+                if (e.x < 0 || e.x > canvas.width)  e.vx *= -1;
+                if (e.y < 0 || e.y > canvas.height) e.vy *= -1;
+                ctx.fillRect(e.x, e.y, TAMANHO, TAMANHO);
+            }
+
+            // move e desenha projéteis
+            ctx.fillStyle = '#6666ff';
+            for (let i = projeteis.length - 1; i >= 0; i--) {
+                const p = projeteis[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vida--;
+                if (p.vida <= 0) { projeteis.splice(i, 1); continue; }
+                ctx.fillRect(p.x, p.y, 5, 5);
+            }
+
+            requestAnimationFrame(loop);
+        }
+
+        loop();
+
+        // ── recordes ──────────────────────────────────────────────────
+        function renderRecordes(recordes) {
+            const lista = document.getElementById('lista-recordes');
+            if (!recordes.length) return;
+            lista.innerHTML = recordes.slice(0, 5).map((r, i) => `
+                <li class="placar-item">
+                    <span class="placar-pos">${i + 1}</span>
+                    <span class="placar-nome">${r.nome}</span>
+                    <span class="placar-pontos">${r.pontos}</span>
+                </li>
+            `).join('');
+        }
+    </script>
+
+</body>
+</html>

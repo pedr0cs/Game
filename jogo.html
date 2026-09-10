@@ -24,7 +24,7 @@
     let velX = 0;
     let velY = 0;
     let xp = 0;
-    let xpProximoNivel = 50;
+    let xpProximoNivel = 20;
     let nivel = 1;
     let velocidadeInimigo = 0.5;
     let ultimoAtaque = 0;
@@ -37,7 +37,7 @@
     let projeteis = [];
     let velocidadeJogador = 5;
     let ultimoSpawn = 0;
-    const intervaloSpawn = 3000;
+    const intervaloSpawn = 2500;
     const teclas = {cima: false, baixo: false, esquerda: false, direita: false}
 
     const estrelas = Array.from({length: 200}, () => ({
@@ -309,7 +309,6 @@
         const tempoPassado = Math.floor((agora - tempoInicio) / 10000);
         const velocidadeBonus = tempoPassado * 0.2;
 
-        // spawn de asteroides pela borda
         if (agora - ultimoSpawn > intervaloSpawn) {
             ultimoSpawn = agora;
             const tipo = nivel >= 2 && Math.random() < 0.5 ? 2 : 1;
@@ -378,14 +377,14 @@
                     projeteis.splice(i, 1);
                     e.hp -= danoProjetil;
                     if (e.hp <= 0) {
-                        pontos += e.tipo === 2 ? 2 : 1;
+                        pontos += e.tipo === 2 ? 3 : 5;
                         inimigos.splice(j, 1);
                         xp += e.tipo === 2 ? 2 : 1;
                         if (xp >= xpProximoNivel) {
                             xp = 0;
                             nivel += 1;
-                            xpProximoNivel = nivel * 50;
-                            velocidadeInimigo += 0.3;
+                            xpProximoNivel = nivel * 5;
+                            velocidadeInimigo += 0.4;
                             mostrarUpgrades();
                             return;
                         }

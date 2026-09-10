@@ -19,22 +19,45 @@
     let angulo = 0;
     let velX = 0;
     let velY = 0;
-    let posInimigo = {x: 300, y: 300};
-    let hpInimigo = 3;
     let xp = 0;
     let xpProximoNivel = 10;
     let nivel = 1;
     let velocidadeInimigo = 1;
     let ultimoAtaque = 0;
-    const cooldownAtaque = 500;
     let danoProjetil = 1;
     let velocidadeProjetil = 5;
     let cooldownAtual = 500;
     let pausado = false;
     let tempoInicio = null;
+    let pontos = 0;
     let projeteis = [];
     let velocidadeJogador = 5;
     const teclas = {cima: false, baixo: false, esquerda: false, direita: false}
+
+    const estrelas = Array.from({length: 200}, () => ({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        r: Math.random() * 1.5 + 0.3,
+        brilho: Math.random()
+    }));
+
+    function novoAsteroide() {
+        let nx, ny;
+        do {
+            nx = Math.random() * (canvas.width - 60) + 30;
+            ny = Math.random() * (canvas.height - 60) + 30;
+        } while (Math.abs(nx - posJogador.x) < 150 && Math.abs(ny - posJogador.y) < 150);
+        const pontos = [];
+        const lados = Math.floor(Math.random() * 4) + 7;
+        for (let i = 0; i < lados; i++) {
+            const a = (i / lados) * Math.PI * 2;
+            const r = 14 + Math.random() * 8;
+            pontos.push({x: Math.cos(a) * r, y: Math.sin(a) * r});
+        }
+        return {x: nx, y: ny, hp: 3, forma: pontos};
+    }
+
+    let inimigos = [novoAsteroide()];
 
     const upgrades = [
         { nome: 'Ataque mais rápido', descricao: 'Cooldown reduzido em 100ms', efeito: () => { cooldownAtual = Math.max(100, cooldownAtual - 100); } },
@@ -89,39 +112,101 @@
         });
     }
 
+    function desenharEstrelas() {
+        for (let e of estrelas) {
+            e.brilho += 0.005;
+            const alpha = 0.4 + Math.sin(e.brilho) * 0.3;
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+            ctx.fill();
+        }
+    }
+
     function desenharNave(x, y, angulo) {
         ctx.save();
         ctx.translate(x + 15, y + 15);
         ctx.rotate(angulo);
+
         ctx.beginPath();
-        ctx.moveTo(0, -18);
-        ctx.lineTo(12, 12);
-        ctx.lineTo(-12, 12);
+        ctx.moveTo(0, -20);
+        ctx.lineTo(13, 14);
+        ctx.lineTo(0, 8);
+        ctx.lineTo(-13, 14);
         ctx.closePath();
-        ctx.fillStyle = 'white';
+        ctx.fillStyle = '#c0d8ff';
         ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+
+        ctx.beginPath();
+        ctx.arc(0, -4, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#4488ff';
+        ctx.fill();
+
+
+        if (teclas.cima || teclas.baixo || teclas.esquerda || teclas.direita) {
+            ctx.beginPath();
+            ctx.moveTo(-5, 14);
+            ctx.lineTo(0, 22 + Math.random() * 6);
+            ctx.lineTo(5, 14);
+            ctx.fillStyle = '#ff8800';
+            ctx.fill();
+        }
+
+        ctx.restore();
+    }
+
+    function desenharAsteroide(e) {
+        ctx.save();
+        ctx.translate(e.x + 15, e.y + 15);
+        ctx.beginPath();
+        ctx.moveTo(e.forma[0].x, e.forma[0].y);
+        for (let i = 1; i < e.forma.length; i++) {
+            ctx.lineTo(e.forma[i].x, e.forma[i].y);
+        }
+        ctx.closePath();
+        ctx.fillStyle = '#6b5a3e';
+        ctx.fill();
+        ctx.strokeStyle = '#a08060';
+        ctx.lineWidth = 2;
+        ctx.stroke();
         ctx.restore();
     }
 
     function desenhar() {
-        if (!posJogador || !posInimigo) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        desenharEstrelas();
 
         desenharNave(posJogador.x, posJogador.y, angulo);
 
-        ctx.fillStyle = 'red';
-        ctx.fillRect(posInimigo.x, posInimigo.y, 30, 30);
-        ctx.fillStyle = 'blue';
-        for (let p of projeteis) {
-            ctx.fillRect(p.x, p.y, 8, 8);
+        for (let e of inimigos) {
+            desenharAsteroide(e);
         }
-        ctx.fillStyle = '#333';
+
+       
+        for (let p of projeteis) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffff66';
+            ctx.shadowColor = '#ffff00';
+            ctx.shadowBlur = 8;
+            ctx.fill();
+            ctx.restore();
+        }
+
+       
+        ctx.fillStyle = '#1a1a2e';
         ctx.fillRect(20, canvas.height - 30, canvas.width - 40, 14);
         ctx.fillStyle = '#8080ff';
         ctx.fillRect(20, canvas.height - 30, (canvas.width - 40) * (xp / xpProximoNivel), 14);
         ctx.fillStyle = 'white';
         ctx.font = '12px monospace';
-        ctx.fillText('NV ' + nivel, 20, canvas.height - 38);
+        ctx.fillText('NV ' + nivel + '   pts: ' + pontos, 20, canvas.height - 38);
     }
 
     document.addEventListener('keydown', function(e) {
@@ -139,14 +224,20 @@
     });
 
     function gameOver() {
+        const tempoSobrevivido = tempoInicio ? Math.floor((performance.now() - tempoInicio) / 1000) : 0;
+        const recordes = JSON.parse(localStorage.getItem('recordes') || '[]');
+        recordes.push({pontos: pontos, tempo: tempoSobrevivido});
+        recordes.sort((a, b) => b.pontos - a.pontos || b.tempo - a.tempo);
+        localStorage.setItem('recordes', JSON.stringify(recordes.slice(0, 5)));
+
         ctx.fillStyle = 'rgba(0,0,0,0.7)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = 'white';
         ctx.textAlign = 'center';
         ctx.font = 'bold 48px monospace';
-        ctx.fillText('GAME OVER', canvas.width/2, canvas.height/2 - 60);
+        ctx.fillText('GAME OVER', canvas.width/2, canvas.height/2 - 80);
         ctx.font = '20px monospace';
-        ctx.fillText('NV ' + nivel + '  |  XP ' + xp, canvas.width/2, canvas.height/2 - 20);
+        ctx.fillText('NV ' + nivel + '  |  ' + pontos + ' pts  |  ' + tempoSobrevivido + 's', canvas.width/2, canvas.height/2 - 30);
 
         ctx.fillStyle = '#5050ff';
         ctx.fillRect(canvas.width/2 - 140, canvas.height/2 + 20, 120, 40);
@@ -166,20 +257,22 @@
 
             if (mx > canvas.width/2 - 140 && mx < canvas.width/2 - 20 &&
                 my > canvas.height/2 + 20 && my < canvas.height/2 + 60) {
-                window.location.href = 'http://localhost:5000/inicio';
+                window.location.href = 'http://127.0.0.1:5500/backend/templates/inicio.html';
             }
 
             if (mx > canvas.width/2 + 20 && mx < canvas.width/2 + 140 &&
                 my > canvas.height/2 + 20 && my < canvas.height/2 + 60) {
                 posJogador = {x: 175, y: 175};
-                posInimigo = {x: 300, y: 300};
-                hpInimigo = 3;
+                inimigos = [novoAsteroide()];
                 xp = 0;
+                pontos = 0;
                 nivel = 1;
                 xpProximoNivel = 10;
                 velocidadeInimigo = 1;
                 projeteis = [];
                 angulo = 0;
+                velX = 0;
+                velY = 0;
                 tempoInicio = null;
                 ctx.textAlign = 'left';
                 canvas.onclick = null;
@@ -203,7 +296,7 @@
         };
     }
 
-   function gameLoop(agora) {
+    function gameLoop(agora) {
         if (pausado) return;
 
         if (!tempoInicio) tempoInicio = agora;
@@ -211,39 +304,39 @@
         const velocidadeBonus = tempoPassado * 0.3;
 
         let dx = 0, dy = 0;
-            if (teclas.cima) dy = -velocidadeJogador;
-            if (teclas.baixo) dy = velocidadeJogador;
-            if (teclas.esquerda) dx = -velocidadeJogador;
-            if (teclas.direita) dx = velocidadeJogador;
+        if (teclas.cima) dy = -velocidadeJogador;
+        if (teclas.baixo) dy = velocidadeJogador;
+        if (teclas.esquerda) dx = -velocidadeJogador;
+        if (teclas.direita) dx = velocidadeJogador;
 
-            if (dx !== 0 || dy !== 0) {
-                angulo = Math.atan2(dx, -dy);
-                velX += dx * 0.3;
-                velY += dy * 0.3;
+        if (dx !== 0 || dy !== 0) {
+            angulo = Math.atan2(dx, -dy);
+            velX += dx * 0.3;
+            velY += dy * 0.3;
+        }
+
+        velX *= 0.92;
+        velY *= 0.92;
+
+        posJogador.x += velX;
+        posJogador.y += velY;
+
+        if (posJogador.x < 0) posJogador.x = canvas.width;
+        if (posJogador.x > canvas.width) posJogador.x = 0;
+        if (posJogador.y < 0) posJogador.y = canvas.height;
+        if (posJogador.y > canvas.height) posJogador.y = 0;
+
+        for (let e of inimigos) {
+            if (e.x < posJogador.x) e.x += velocidadeInimigo + velocidadeBonus;
+            else if (e.x > posJogador.x) e.x -= velocidadeInimigo + velocidadeBonus;
+            if (e.y < posJogador.y) e.y += velocidadeInimigo + velocidadeBonus;
+            else if (e.y > posJogador.y) e.y -= velocidadeInimigo + velocidadeBonus;
+
+            if (Math.abs(e.x - posJogador.x) < 30 && Math.abs(e.y - posJogador.y) < 30) {
+                desenhar();
+                gameOver();
+                return;
             }
-
-            velX *= 0.92;
-            velY *= 0.92;
-
-            posJogador.x += velX;
-            posJogador.y += velY;
-
-            if (posJogador.x < 0) posJogador.x = canvas.width;
-            if (posJogador.x > canvas.width) posJogador.x = 0;
-            if (posJogador.y < 0) posJogador.y = canvas.height;
-            if (posJogador.y > canvas.height) posJogador.y = 0;
-
-        if (posInimigo.x < posJogador.x) posInimigo.x += velocidadeInimigo + velocidadeBonus;
-        else if (posInimigo.x > posJogador.x) posInimigo.x -= velocidadeInimigo + velocidadeBonus;
-
-        if (posInimigo.y < posJogador.y) posInimigo.y += velocidadeInimigo + velocidadeBonus;
-        else if (posInimigo.y > posJogador.y) posInimigo.y -= velocidadeInimigo + velocidadeBonus;
-
-        if (Math.abs(posInimigo.x - posJogador.x) < 30 &&
-            Math.abs(posInimigo.y - posJogador.y) < 30) {
-            desenhar();
-            gameOver();
-            return;
         }
 
         if (agora - ultimoAtaque > cooldownAtual) {
@@ -266,27 +359,27 @@
                 continue;
             }
 
-            if (p.x > posInimigo.x && p.x < posInimigo.x + 30 &&
-                p.y > posInimigo.y && p.y < posInimigo.y + 30) {
-                projeteis.splice(i, 1);
-                hpInimigo -= danoProjetil;
-                if (hpInimigo <= 0) {
-                    let nx, ny;
-                    do {
-                        nx = Math.random() * (canvas.width - 60) + 30;
-                        ny = Math.random() * (canvas.height - 60) + 30;
-                    } while (Math.abs(nx - posJogador.x) < 100 && Math.abs(ny - posJogador.y) < 100);
-                    posInimigo = {x: nx, y: ny};
-                    hpInimigo = 3;
-                    xp += 1;
-                    if (xp >= xpProximoNivel) {
-                        xp = 0;
-                        nivel += 1;
-                        xpProximoNivel = nivel * 10;
-                        velocidadeInimigo += 0.5;
-                        mostrarUpgrades();
-                        return;
+            for (let j = inimigos.length - 1; j >= 0; j--) {
+                let e = inimigos[j];
+                if (p.x > e.x && p.x < e.x + 30 && p.y > e.y && p.y < e.y + 30) {
+                    projeteis.splice(i, 1);
+                    e.hp -= danoProjetil;
+                    if (e.hp <= 0) {
+                        pontos += 1;
+                        inimigos.splice(j, 1);
+                        inimigos.push(novoAsteroide());
+                        xp += 1;
+                        if (xp >= xpProximoNivel) {
+                            xp = 0;
+                            nivel += 1;
+                            xpProximoNivel = nivel * 10;
+                            velocidadeInimigo += 0.5;
+                            inimigos.push(novoAsteroide());
+                            mostrarUpgrades();
+                            return;
+                        }
                     }
+                    break;
                 }
             }
         }

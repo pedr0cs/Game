@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <base href="/">
     <title>Game</title>
     <style>
         * { margin: 0; padding: 0; }
@@ -16,14 +15,18 @@
     const ctx = canvas.getContext('2d');
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    let posJogador = {x: 175, y: 175};
+    window.addEventListener('resize', () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    });
+    let posJogador = {x: canvas.width / 2, y: canvas.height / 2};
     let angulo = 0;
     let velX = 0;
     let velY = 0;
     let xp = 0;
-    let xpProximoNivel = 10;
+    let xpProximoNivel = 50;
     let nivel = 1;
-    let velocidadeInimigo = 1;
+    let velocidadeInimigo = 0.5;
     let ultimoAtaque = 0;
     let danoProjetil = 1;
     let velocidadeProjetil = 5;
@@ -33,6 +36,8 @@
     let pontos = 0;
     let projeteis = [];
     let velocidadeJogador = 5;
+    let ultimoSpawn = 0;
+    const intervaloSpawn = 3000;
     const teclas = {cima: false, baixo: false, esquerda: false, direita: false}
 
     const estrelas = Array.from({length: 200}, () => ({
@@ -42,23 +47,26 @@
         brilho: Math.random()
     }));
 
-    function novoAsteroide() {
-        let nx, ny;
-        do {
-            nx = Math.random() * (canvas.width - 60) + 30;
-            ny = Math.random() * (canvas.height - 60) + 30;
-        } while (Math.abs(nx - posJogador.x) < 150 && Math.abs(ny - posJogador.y) < 150);
-        const pontos = [];
+    function asteroideNaBorda(tipo) {
+        const lado = Math.floor(Math.random() * 4);
+        let x, y;
+        if (lado === 0) { x = Math.random() * canvas.width; y = -30; }
+        else if (lado === 1) { x = canvas.width + 30; y = Math.random() * canvas.height; }
+        else if (lado === 2) { x = Math.random() * canvas.width; y = canvas.height + 30; }
+        else { x = -30; y = Math.random() * canvas.height; }
+
         const lados = Math.floor(Math.random() * 4) + 7;
+        const forma = [];
+        const tamanho = tipo === 2 ? 20 : 14;
         for (let i = 0; i < lados; i++) {
             const a = (i / lados) * Math.PI * 2;
-            const r = 14 + Math.random() * 8;
-            pontos.push({x: Math.cos(a) * r, y: Math.sin(a) * r});
+            const r = tamanho + Math.random() * 8;
+            forma.push({x: Math.cos(a) * r, y: Math.sin(a) * r});
         }
-        return {x: nx, y: ny, hp: 3, forma: pontos};
+        return {x, y, hp: tipo === 2 ? 4 : 2, hpMax: tipo === 2 ? 4 : 2, tipo, forma};
     }
 
-    let inimigos = [novoAsteroide()];
+    let inimigos = [asteroideNaBorda(1), asteroideNaBorda(1), asteroideNaBorda(1)];
 
     const upgrades = [
         { nome: 'Ataque mais rápido', descricao: 'Cooldown reduzido em 100ms', efeito: () => { cooldownAtual = Math.max(100, cooldownAtual - 100); } },
@@ -128,7 +136,6 @@
         ctx.save();
         ctx.translate(x + 15, y + 15);
         ctx.rotate(angulo);
-
         ctx.beginPath();
         ctx.moveTo(0, -20);
         ctx.lineTo(13, 14);
@@ -140,14 +147,10 @@
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 1.5;
         ctx.stroke();
-
-
         ctx.beginPath();
         ctx.arc(0, -4, 4, 0, Math.PI * 2);
         ctx.fillStyle = '#4488ff';
         ctx.fill();
-
-
         if (teclas.cima || teclas.baixo || teclas.esquerda || teclas.direita) {
             ctx.beginPath();
             ctx.moveTo(-5, 14);
@@ -156,7 +159,6 @@
             ctx.fillStyle = '#ff8800';
             ctx.fill();
         }
-
         ctx.restore();
     }
 
@@ -169,26 +171,30 @@
             ctx.lineTo(e.forma[i].x, e.forma[i].y);
         }
         ctx.closePath();
-        ctx.fillStyle = '#6b5a3e';
+        ctx.fillStyle = e.tipo === 2 ? '#8b4513' : '#6b5a3e';
         ctx.fill();
-        ctx.strokeStyle = '#a08060';
+        ctx.strokeStyle = e.tipo === 2 ? '#cd853f' : '#a08060';
         ctx.lineWidth = 2;
         ctx.stroke();
+
+        // barra de hp
+        const barW = 40;
+        const barH = 4;
+        ctx.fillStyle = '#333';
+        ctx.fillRect(-barW/2, -30, barW, barH);
+        ctx.fillStyle = e.tipo === 2 ? '#ff6600' : '#ff4444';
+        ctx.fillRect(-barW/2, -30, barW * (e.hp / e.hpMax), barH);
+
         ctx.restore();
     }
 
     function desenhar() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-
         desenharEstrelas();
-
         desenharNave(posJogador.x, posJogador.y, angulo);
-
         for (let e of inimigos) {
             desenharAsteroide(e);
         }
-
-       
         for (let p of projeteis) {
             ctx.save();
             ctx.beginPath();
@@ -199,8 +205,6 @@
             ctx.fill();
             ctx.restore();
         }
-
-       
         ctx.fillStyle = '#1a1a2e';
         ctx.fillRect(20, canvas.height - 30, canvas.width - 40, 14);
         ctx.fillStyle = '#8080ff';
@@ -263,18 +267,19 @@
 
             if (mx > canvas.width/2 + 20 && mx < canvas.width/2 + 140 &&
                 my > canvas.height/2 + 20 && my < canvas.height/2 + 60) {
-                posJogador = {x: 175, y: 175};
-                inimigos = [novoAsteroide()];
+                posJogador = {x: canvas.width / 2, y: canvas.height / 2};
+                inimigos = [asteroideNaBorda(1), asteroideNaBorda(1), asteroideNaBorda(1)];
                 xp = 0;
                 pontos = 0;
                 nivel = 1;
-                xpProximoNivel = 10;
-                velocidadeInimigo = 1;
+                xpProximoNivel = 50;
+                velocidadeInimigo = 0.5;
                 projeteis = [];
                 angulo = 0;
                 velX = 0;
                 velY = 0;
                 tempoInicio = null;
+                ultimoSpawn = 0;
                 ctx.textAlign = 'left';
                 canvas.onclick = null;
                 canvas.onmousemove = null;
@@ -302,7 +307,14 @@
 
         if (!tempoInicio) tempoInicio = agora;
         const tempoPassado = Math.floor((agora - tempoInicio) / 10000);
-        const velocidadeBonus = tempoPassado * 0.3;
+        const velocidadeBonus = tempoPassado * 0.2;
+
+        // spawn de asteroides pela borda
+        if (agora - ultimoSpawn > intervaloSpawn) {
+            ultimoSpawn = agora;
+            const tipo = nivel >= 2 && Math.random() < 0.5 ? 2 : 1;
+            inimigos.push(asteroideNaBorda(tipo));
+        }
 
         let dx = 0, dy = 0;
         if (teclas.cima) dy = -velocidadeJogador;
@@ -366,16 +378,14 @@
                     projeteis.splice(i, 1);
                     e.hp -= danoProjetil;
                     if (e.hp <= 0) {
-                        pontos += 1;
+                        pontos += e.tipo === 2 ? 2 : 1;
                         inimigos.splice(j, 1);
-                        inimigos.push(novoAsteroide());
-                        xp += 1;
+                        xp += e.tipo === 2 ? 2 : 1;
                         if (xp >= xpProximoNivel) {
                             xp = 0;
                             nivel += 1;
-                            xpProximoNivel = nivel * 10;
-                            velocidadeInimigo += 0.5;
-                            inimigos.push(novoAsteroide());
+                            xpProximoNivel = nivel * 50;
+                            velocidadeInimigo += 0.3;
                             mostrarUpgrades();
                             return;
                         }
@@ -391,4 +401,5 @@
 
     requestAnimationFrame(gameLoop);
     </script>
-</body></html>
+</body>
+</html>

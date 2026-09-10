@@ -1,0 +1,104 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: #0a0a0f;
+            color: #e8e8f0;
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 48px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        canvas#bg {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            opacity: 0.35;
+        }
+
+        .titulo, .placar, .acoes {
+            position: relative;
+            z-index: 1;
+        }
+
+        .titulo {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 2.8rem;
+            color: #ffffff;
+            letter-spacing: 2px;
+            text-shadow:
+                0 0 20px rgba(255,255,255,0.3),
+                0 0 60px rgba(120,80,255,0.4);
+            animation: pulsar 3s ease-in-out infinite;
+        }
+
+        @keyframes pulsar {
+            0%, 100% { text-shadow: 0 0 20px rgba(255,255,255,0.3), 0 0 60px rgba(120,80,255,0.4); }
+            50%       { text-shadow: 0 0 30px rgba(255,255,255,0.5), 0 0 80px rgba(120,80,255,0.7); }
+        }
+
+        .placar {
+            width: 360px;
+            background: rgba(19,19,31,0.85);
+            border: 1px solid #2a2a40;
+            border-radius: 4px;
+            padding: 24px 28px;
+            backdrop-filter: blur(4px);
+        }
+
+        .placar-titulo {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.6rem;
+            color: #6060a0;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+        }
+
+        .placar-lista { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+
+        .placar-item {
+            display: flex; align-items: center; gap: 16px;
+            font-size: 0.85rem; color: #a0a0c0;
+        }
+
+        .placar-pos {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.55rem; width: 24px;
+            text-align: right; color: #50508080;
+        }
+
+        .placar-nome { flex: 1; color: #c0c0e0; }
+
+        .placar-pontos {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.6rem; color: #8080ff;
+        }
+
+        .placar-vazio {
+            font-size: 0.8rem; color: #3a3a5a;
+            text-align: center; padding: 12px 0;
+        }
+
+        .acoes { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+
+        .btn-jogar {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.9rem;
+            background: #5050ff; color: #ffffff;
+            border: none; padding: 18px 48px;
+            border-radius: 2px; cursor: pointer;
+            letter-spacing: 1px;
+            transition: background 0.15s, transform 0.1s;
+        }
+
+        .btn-jogar:hover { background: #7070ff; transform: translateY(-2px); }
+        .btn-jogar:active { transform: translateY(0); }
+
+        .creditos { font-size: 0.72rem; color: #3a3a5a; letter-spacing: 0.5px; }
+        .creditos span { color: #5050a0; }

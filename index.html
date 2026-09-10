@@ -2,8 +2,10 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Joguinho</title>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <base href="/">
+    <title>JOGUINHO</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -125,7 +127,11 @@
     </div>
 
     <div class="acoes">
+<<<<<<< HEAD
         <button class="btn-jogar" onclick="window.location.href='index.html'">JOGAR</button>
+=======
+        <button class="btn-jogar" onclick="window.location.href='jogo.html'">JOGAR</button>
+>>>>>>> b1a6276bba374448e805bba50d5625d0a39966be
         <p class="creditos">feito por <span>pedr0cs</span></p>
     </div>
 
@@ -195,21 +201,6 @@
                 ctx.fillRect(p.x, p.y, 5, 5);
             }
 
-            const recordes = JSON.parse(localStorage.getItem('recordes') || '[]');
-            renderRecordes(recordes);
-
-            function renderRecordes(recordes) {
-                const lista = document.getElementById('lista-recordes');
-                if (!recordes.length) return;
-                lista.innerHTML = recordes.slice(0, 5).map((r, i) => `
-                    <li class="placar-item">
-                        <span class="placar-pos">${i + 1}</span>
-                        <span class="placar-nome">${r.pontos} pts</span>
-                        <span class="placar-pontos">${r.tempo}s</span>
-                    </li>
-                `).join('');
-            }
-
             requestAnimationFrame(loop);
         }
 
@@ -226,6 +217,9 @@
                 </li>
             `).join('');
         }
+
+        const recordes = JSON.parse(localStorage.getItem('recordes') || '[]');
+        renderRecordes(recordes);
     </script>
 
 </body>

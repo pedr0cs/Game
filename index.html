@@ -1,394 +1,232 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-    <title>Game</title>
+    <meta charset="UTF-8">
+    <title>Joguinho</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <style>
-        * { margin: 0; padding: 0; }
-        body { overflow: hidden; background: #0a0a0f; }
-        canvas { display: block; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: #0a0a0f;
+            color: #e8e8f0;
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 48px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        canvas#bg {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            opacity: 0.35;
+        }
+
+        .titulo, .placar, .acoes {
+            position: relative;
+            z-index: 1;
+        }
+
+        .titulo {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 2.8rem;
+            color: #ffffff;
+            letter-spacing: 2px;
+            text-shadow:
+                0 0 20px rgba(255,255,255,0.3),
+                0 0 60px rgba(120,80,255,0.4);
+            animation: pulsar 3s ease-in-out infinite;
+        }
+
+        @keyframes pulsar {
+            0%, 100% { text-shadow: 0 0 20px rgba(255,255,255,0.3), 0 0 60px rgba(120,80,255,0.4); }
+            50%       { text-shadow: 0 0 30px rgba(255,255,255,0.5), 0 0 80px rgba(120,80,255,0.7); }
+        }
+
+        .placar {
+            width: 360px;
+            background: rgba(19,19,31,0.85);
+            border: 1px solid #2a2a40;
+            border-radius: 4px;
+            padding: 24px 28px;
+            backdrop-filter: blur(4px);
+        }
+
+        .placar-titulo {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.6rem;
+            color: #6060a0;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+        }
+
+        .placar-lista { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+
+        .placar-item {
+            display: flex; align-items: center; gap: 16px;
+            font-size: 0.85rem; color: #a0a0c0;
+        }
+
+        .placar-pos {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.55rem; width: 24px;
+            text-align: right; color: #50508080;
+        }
+
+        .placar-nome { flex: 1; color: #c0c0e0; }
+
+        .placar-pontos {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.6rem; color: #8080ff;
+        }
+
+        .placar-vazio {
+            font-size: 0.8rem; color: #3a3a5a;
+            text-align: center; padding: 12px 0;
+        }
+
+        .acoes { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+
+        .btn-jogar {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.9rem;
+            background: #5050ff; color: #ffffff;
+            border: none; padding: 18px 48px;
+            border-radius: 2px; cursor: pointer;
+            letter-spacing: 1px;
+            transition: background 0.15s, transform 0.1s;
+        }
+
+        .btn-jogar:hover { background: #7070ff; transform: translateY(-2px); }
+        .btn-jogar:active { transform: translateY(0); }
+
+        .creditos { font-size: 0.72rem; color: #3a3a5a; letter-spacing: 0.5px; }
+        .creditos span { color: #5050a0; }
     </style>
 </head>
 <body>
-   <canvas id="canvas" style="display: block;"></canvas>
+
+    <canvas id="bg"></canvas>
+
+    <h1 class="titulo">JOGUINHO</h1>
+
+    <div class="placar">
+        <p class="placar-titulo">RECORDES</p>
+        <ul class="placar-lista" id="lista-recordes">
+            <li class="placar-vazio">nenhum recorde ainda</li>
+        </ul>
+    </div>
+
+    <div class="acoes">
+        <button class="btn-jogar" onclick="window.location.href='http://127.0.0.1:5500/index.html'">JOGAR</button>
+        <p class="creditos">feito por <span>pedr0cs</span></p>
+    </div>
+
     <script>
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    let posJogador = {x: 175, y: 175};
-    let angulo = 0;
-    let velX = 0;
-    let velY = 0;
-    let xp = 0;
-    let xpProximoNivel = 10;
-    let nivel = 1;
-    let velocidadeInimigo = 1;
-    let ultimoAtaque = 0;
-    let danoProjetil = 1;
-    let velocidadeProjetil = 5;
-    let cooldownAtual = 500;
-    let pausado = false;
-    let tempoInicio = null;
-    let pontos = 0;
-    let projeteis = [];
-    let velocidadeJogador = 5;
-    const teclas = {cima: false, baixo: false, esquerda: false, direita: false}
+        const canvas = document.getElementById('bg');
+        const ctx = canvas.getContext('2d');
 
-    const estrelas = Array.from({length: 200}, () => ({
-        x: Math.random() * window.innerWidth,
-        y: Math.random() * window.innerHeight,
-        r: Math.random() * 1.5 + 0.3,
-        brilho: Math.random()
-    }));
-
-    function novoAsteroide() {
-        let nx, ny;
-        do {
-            nx = Math.random() * (canvas.width - 60) + 30;
-            ny = Math.random() * (canvas.height - 60) + 30;
-        } while (Math.abs(nx - posJogador.x) < 150 && Math.abs(ny - posJogador.y) < 150);
-        const pontos = [];
-        const lados = Math.floor(Math.random() * 4) + 7;
-        for (let i = 0; i < lados; i++) {
-            const a = (i / lados) * Math.PI * 2;
-            const r = 14 + Math.random() * 8;
-            pontos.push({x: Math.cos(a) * r, y: Math.sin(a) * r});
+        function resize() {
+            canvas.width  = window.innerWidth;
+            canvas.height = window.innerHeight;
         }
-        return {x: nx, y: ny, hp: 3, forma: pontos};
-    }
+        resize();
+        window.addEventListener('resize', resize);
 
-    let inimigos = [novoAsteroide()];
+        const TAMANHO = 12;
 
-    const upgrades = [
-        { nome: 'Ataque mais rápido', descricao: 'Cooldown reduzido em 100ms', efeito: () => { cooldownAtual = Math.max(100, cooldownAtual - 100); } },
-        { nome: 'Projétil mais veloz', descricao: 'Velocidade do projétil +2', efeito: () => { velocidadeProjetil += 2; } },
-        { nome: 'Mais dano', descricao: 'Inimigo morre mais rápido', efeito: () => { danoProjetil += 1; } },
-        { nome: 'Movimento mais rápido', descricao: 'Velocidade do jogador +2', efeito: () => { velocidadeJogador += 2; } },
-    ];
+        const inimigos = Array.from({length: 8}, () => ({
+            x: Math.random() * window.innerWidth,
+            y: Math.random() * window.innerHeight,
+            vx: (Math.random() - 0.5) * 1.2,
+            vy: (Math.random() - 0.5) * 1.2,
+        }));
 
-    function mostrarUpgrades() {
-        pausado = true;
-        const sorteados = [...upgrades].sort(() => Math.random() - 0.5).slice(0, 3);
+        const projeteis = [];
 
-        let modal = document.getElementById('modal-upgrade');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'modal-upgrade';
-            modal.style.cssText = `
-                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                display: flex; flex-direction: column; align-items: center;
-                justify-content: center; gap: 16px;
-                background: rgba(0,0,0,0.75); z-index: 10;
-                font-family: monospace; color: white;
-            `;
-            document.body.appendChild(modal);
-        }
+        let tick = 0;
 
-        modal.innerHTML = `
-            <h2 style="font-size: 1.8rem; margin-bottom: 8px;">NÍVEL ${nivel}!</h2>
-            <p style="color: #aaa; margin-bottom: 16px;">Escolha um upgrade:</p>
-            ${sorteados.map((u, i) => `
-                <button data-i="${i}" style="
-                    background: #1a1a2e; border: 1px solid #5050ff;
-                    color: white; font-family: monospace; font-size: 1rem;
-                    padding: 16px 32px; width: 300px; cursor: pointer;
-                    border-radius: 4px; text-align: left;
-                ">
-                    <strong>${u.nome}</strong><br>
-                    <span style="color: #aaa; font-size: 0.85rem;">${u.descricao}</span>
-                </button>
-            `).join('')}
-        `;
-
-        modal.querySelectorAll('button').forEach((btn, i) => {
-            btn.onmouseenter = () => btn.style.background = '#2a2a4e';
-            btn.onmouseleave = () => btn.style.background = '#1a1a2e';
-            btn.onclick = () => {
-                sorteados[i].efeito();
-                modal.remove();
-                pausado = false;
-                requestAnimationFrame(gameLoop);
+        function dispararProjetil() {
+            const origem = {
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height
             };
-        });
-    }
-
-    function desenharEstrelas() {
-        for (let e of estrelas) {
-            e.brilho += 0.005;
-            const alpha = 0.4 + Math.sin(e.brilho) * 0.3;
-            ctx.beginPath();
-            ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-            ctx.fill();
-        }
-    }
-
-    function desenharNave(x, y, angulo) {
-        ctx.save();
-        ctx.translate(x + 15, y + 15);
-        ctx.rotate(angulo);
-
-        ctx.beginPath();
-        ctx.moveTo(0, -20);
-        ctx.lineTo(13, 14);
-        ctx.lineTo(0, 8);
-        ctx.lineTo(-13, 14);
-        ctx.closePath();
-        ctx.fillStyle = '#c0d8ff';
-        ctx.fill();
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-
-
-        ctx.beginPath();
-        ctx.arc(0, -4, 4, 0, Math.PI * 2);
-        ctx.fillStyle = '#4488ff';
-        ctx.fill();
-
-
-        if (teclas.cima || teclas.baixo || teclas.esquerda || teclas.direita) {
-            ctx.beginPath();
-            ctx.moveTo(-5, 14);
-            ctx.lineTo(0, 22 + Math.random() * 6);
-            ctx.lineTo(5, 14);
-            ctx.fillStyle = '#ff8800';
-            ctx.fill();
-        }
-
-        ctx.restore();
-    }
-
-    function desenharAsteroide(e) {
-        ctx.save();
-        ctx.translate(e.x + 15, e.y + 15);
-        ctx.beginPath();
-        ctx.moveTo(e.forma[0].x, e.forma[0].y);
-        for (let i = 1; i < e.forma.length; i++) {
-            ctx.lineTo(e.forma[i].x, e.forma[i].y);
-        }
-        ctx.closePath();
-        ctx.fillStyle = '#6b5a3e';
-        ctx.fill();
-        ctx.strokeStyle = '#a08060';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        ctx.restore();
-    }
-
-    function desenhar() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        desenharEstrelas();
-
-        desenharNave(posJogador.x, posJogador.y, angulo);
-
-        for (let e of inimigos) {
-            desenharAsteroide(e);
-        }
-
-       
-        for (let p of projeteis) {
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
-            ctx.fillStyle = '#ffff66';
-            ctx.shadowColor = '#ffff00';
-            ctx.shadowBlur = 8;
-            ctx.fill();
-            ctx.restore();
-        }
-
-       
-        ctx.fillStyle = '#1a1a2e';
-        ctx.fillRect(20, canvas.height - 30, canvas.width - 40, 14);
-        ctx.fillStyle = '#8080ff';
-        ctx.fillRect(20, canvas.height - 30, (canvas.width - 40) * (xp / xpProximoNivel), 14);
-        ctx.fillStyle = 'white';
-        ctx.font = '12px monospace';
-        ctx.fillText('NV ' + nivel + '   pts: ' + pontos, 20, canvas.height - 38);
-    }
-
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'w' || e.key === 'ArrowUp') teclas.cima = true;
-        if (e.key === 's' || e.key === 'ArrowDown') teclas.baixo = true;
-        if (e.key === 'a' || e.key === 'ArrowLeft') teclas.esquerda = true;
-        if (e.key === 'd' || e.key === 'ArrowRight') teclas.direita = true;
-    });
-
-    document.addEventListener('keyup', function(e) {
-        if (e.key === 'w' || e.key === 'ArrowUp') teclas.cima = false;
-        if (e.key === 's' || e.key === 'ArrowDown') teclas.baixo = false;
-        if (e.key === 'a' || e.key === 'ArrowLeft') teclas.esquerda = false;
-        if (e.key === 'd' || e.key === 'ArrowRight') teclas.direita = false;
-    });
-
-    function gameOver() {
-        const tempoSobrevivido = tempoInicio ? Math.floor((performance.now() - tempoInicio) / 1000) : 0;
-        const recordes = JSON.parse(localStorage.getItem('recordes') || '[]');
-        recordes.push({pontos: pontos, tempo: tempoSobrevivido});
-        recordes.sort((a, b) => b.pontos - a.pontos || b.tempo - a.tempo);
-        localStorage.setItem('recordes', JSON.stringify(recordes.slice(0, 5)));
-
-        ctx.fillStyle = 'rgba(0,0,0,0.7)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = 'white';
-        ctx.textAlign = 'center';
-        ctx.font = 'bold 48px monospace';
-        ctx.fillText('GAME OVER', canvas.width/2, canvas.height/2 - 80);
-        ctx.font = '20px monospace';
-        ctx.fillText('NV ' + nivel + '  |  ' + pontos + ' pts  |  ' + tempoSobrevivido + 's', canvas.width/2, canvas.height/2 - 30);
-
-        ctx.fillStyle = '#5050ff';
-        ctx.fillRect(canvas.width/2 - 140, canvas.height/2 + 20, 120, 40);
-        ctx.fillStyle = 'white';
-        ctx.font = '14px monospace';
-        ctx.fillText('INICIO', canvas.width/2 - 80, canvas.height/2 + 46);
-
-        ctx.fillStyle = '#336633';
-        ctx.fillRect(canvas.width/2 + 20, canvas.height/2 + 20, 120, 40);
-        ctx.fillStyle = 'white';
-        ctx.fillText('RETRY', canvas.width/2 + 80, canvas.height/2 + 46);
-
-        canvas.onclick = function(e) {
-            const rect = canvas.getBoundingClientRect();
-            const mx = e.clientX - rect.left;
-            const my = e.clientY - rect.top;
-
-            if (mx > canvas.width/2 - 140 && mx < canvas.width/2 - 20 &&
-                my > canvas.height/2 + 20 && my < canvas.height/2 + 60) {
-                window.location.href = 'http://127.0.0.1:5500/backend/templates/inicio.html';
-            }
-
-            if (mx > canvas.width/2 + 20 && mx < canvas.width/2 + 140 &&
-                my > canvas.height/2 + 20 && my < canvas.height/2 + 60) {
-                posJogador = {x: 175, y: 175};
-                inimigos = [novoAsteroide()];
-                xp = 0;
-                pontos = 0;
-                nivel = 1;
-                xpProximoNivel = 10;
-                velocidadeInimigo = 1;
-                projeteis = [];
-                angulo = 0;
-                velX = 0;
-                velY = 0;
-                tempoInicio = null;
-                ctx.textAlign = 'left';
-                canvas.onclick = null;
-                canvas.onmousemove = null;
-                requestAnimationFrame(gameLoop);
-            }
-        };
-        canvas.onmousemove = function(e) {
-            const rect = canvas.getBoundingClientRect();
-            const mx = e.clientX - rect.left;
-            const my = e.clientY - rect.top;
-
-            if ((mx > canvas.width/2 - 140 && mx < canvas.width/2 - 20 &&
-                my > canvas.height/2 + 20 && my < canvas.height/2 + 60) ||
-                (mx > canvas.width/2 + 20 && mx < canvas.width/2 + 140 &&
-                my > canvas.height/2 + 20 && my < canvas.height/2 + 60)) {
-                canvas.style.cursor = 'pointer';
-            } else {
-                canvas.style.cursor = 'default';
-            }
-        };
-    }
-
-    function gameLoop(agora) {
-        if (pausado) return;
-
-        if (!tempoInicio) tempoInicio = agora;
-        const tempoPassado = Math.floor((agora - tempoInicio) / 10000);
-        const velocidadeBonus = tempoPassado * 0.3;
-
-        let dx = 0, dy = 0;
-        if (teclas.cima) dy = -velocidadeJogador;
-        if (teclas.baixo) dy = velocidadeJogador;
-        if (teclas.esquerda) dx = -velocidadeJogador;
-        if (teclas.direita) dx = velocidadeJogador;
-
-        if (dx !== 0 || dy !== 0) {
-            angulo = Math.atan2(dx, -dy);
-            velX += dx * 0.3;
-            velY += dy * 0.3;
-        }
-
-        velX *= 0.92;
-        velY *= 0.92;
-
-        posJogador.x += velX;
-        posJogador.y += velY;
-
-        if (posJogador.x < 0) posJogador.x = canvas.width;
-        if (posJogador.x > canvas.width) posJogador.x = 0;
-        if (posJogador.y < 0) posJogador.y = canvas.height;
-        if (posJogador.y > canvas.height) posJogador.y = 0;
-
-        for (let e of inimigos) {
-            if (e.x < posJogador.x) e.x += velocidadeInimigo + velocidadeBonus;
-            else if (e.x > posJogador.x) e.x -= velocidadeInimigo + velocidadeBonus;
-            if (e.y < posJogador.y) e.y += velocidadeInimigo + velocidadeBonus;
-            else if (e.y > posJogador.y) e.y -= velocidadeInimigo + velocidadeBonus;
-
-            if (Math.abs(e.x - posJogador.x) < 30 && Math.abs(e.y - posJogador.y) < 30) {
-                desenhar();
-                gameOver();
-                return;
-            }
-        }
-
-        if (agora - ultimoAtaque > cooldownAtual) {
-            ultimoAtaque = agora;
+            const alvo = inimigos[Math.floor(Math.random() * inimigos.length)];
+            const dx = alvo.x - origem.x;
+            const dy = alvo.y - origem.y;
+            const dist = Math.sqrt(dx*dx + dy*dy) || 1;
             projeteis.push({
-                x: posJogador.x + 15,
-                y: posJogador.y + 15,
-                dx: Math.sin(angulo),
-                dy: -Math.cos(angulo)
+                x: origem.x, y: origem.y,
+                vx: (dx / dist) * 4,
+                vy: (dy / dist) * 4,
+                vida: 80
             });
         }
 
-        for (let i = projeteis.length - 1; i >= 0; i--) {
-            let p = projeteis[i];
-            p.x += p.dx * velocidadeProjetil;
-            p.y += p.dy * velocidadeProjetil;
+        function loop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            if (p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height) {
-                projeteis.splice(i, 1);
-                continue;
+            tick++;
+            if (tick % 30 === 0) dispararProjetil();
+
+            ctx.fillStyle = '#ff4444';
+            for (const e of inimigos) {
+                e.x += e.vx;
+                e.y += e.vy;
+                if (e.x < 0 || e.x > canvas.width)  e.vx *= -1;
+                if (e.y < 0 || e.y > canvas.height) e.vy *= -1;
+                ctx.fillRect(e.x, e.y, TAMANHO, TAMANHO);
             }
 
-            for (let j = inimigos.length - 1; j >= 0; j--) {
-                let e = inimigos[j];
-                if (p.x > e.x && p.x < e.x + 30 && p.y > e.y && p.y < e.y + 30) {
-                    projeteis.splice(i, 1);
-                    e.hp -= danoProjetil;
-                    if (e.hp <= 0) {
-                        pontos += 1;
-                        inimigos.splice(j, 1);
-                        inimigos.push(novoAsteroide());
-                        xp += 1;
-                        if (xp >= xpProximoNivel) {
-                            xp = 0;
-                            nivel += 1;
-                            xpProximoNivel = nivel * 10;
-                            velocidadeInimigo += 0.5;
-                            inimigos.push(novoAsteroide());
-                            mostrarUpgrades();
-                            return;
-                        }
-                    }
-                    break;
-                }
+            ctx.fillStyle = '#6666ff';
+            for (let i = projeteis.length - 1; i >= 0; i--) {
+                const p = projeteis[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vida--;
+                if (p.vida <= 0) { projeteis.splice(i, 1); continue; }
+                ctx.fillRect(p.x, p.y, 5, 5);
             }
+
+            const recordes = JSON.parse(localStorage.getItem('recordes') || '[]');
+            renderRecordes(recordes);
+
+            function renderRecordes(recordes) {
+                const lista = document.getElementById('lista-recordes');
+                if (!recordes.length) return;
+                lista.innerHTML = recordes.slice(0, 5).map((r, i) => `
+                    <li class="placar-item">
+                        <span class="placar-pos">${i + 1}</span>
+                        <span class="placar-nome">${r.pontos} pts</span>
+                        <span class="placar-pontos">${r.tempo}s</span>
+                    </li>
+                `).join('');
+            }
+
+            requestAnimationFrame(loop);
         }
 
-        desenhar();
-        requestAnimationFrame(gameLoop);
-    }
+        loop();
 
-    requestAnimationFrame(gameLoop);
+        function renderRecordes(recordes) {
+            const lista = document.getElementById('lista-recordes');
+            if (!recordes.length) return;
+            lista.innerHTML = recordes.slice(0, 5).map((r, i) => `
+                <li class="placar-item">
+                    <span class="placar-pos">${i + 1}</span>
+                    <span class="placar-nome">${r.nome}</span>
+                    <span class="placar-pontos">${r.pontos}</span>
+                </li>
+            `).join('');
+        }
     </script>
+
 </body>
 </html>

@@ -125,12 +125,11 @@
     </div>
 
     <div class="acoes">
-        <button class="btn-jogar" onclick="window.location.href='http://localhost:5000'">JOGAR</button>
+        <button class="btn-jogar" onclick="window.location.href='http://127.0.0.1:5500/backend/templates/index.html'">JOGAR</button>
         <p class="creditos">feito por <span>pedr0cs</span></p>
     </div>
 
     <script>
-        // ── animação de fundo ──────────────────────────────────────────
         const canvas = document.getElementById('bg');
         const ctx = canvas.getContext('2d');
 
@@ -143,7 +142,6 @@
 
         const TAMANHO = 12;
 
-        // inimigos vermelhos vagando
         const inimigos = Array.from({length: 8}, () => ({
             x: Math.random() * window.innerWidth,
             y: Math.random() * window.innerHeight,
@@ -151,13 +149,11 @@
             vy: (Math.random() - 0.5) * 1.2,
         }));
 
-        // projéteis azuis
         const projeteis = [];
 
         let tick = 0;
 
         function dispararProjetil() {
-            // parte de um ponto aleatório da tela em direção a um inimigo aleatório
             const origem = {
                 x: Math.random() * canvas.width,
                 y: Math.random() * canvas.height
@@ -180,7 +176,6 @@
             tick++;
             if (tick % 30 === 0) dispararProjetil();
 
-            // move e desenha inimigos
             ctx.fillStyle = '#ff4444';
             for (const e of inimigos) {
                 e.x += e.vx;
@@ -190,7 +185,6 @@
                 ctx.fillRect(e.x, e.y, TAMANHO, TAMANHO);
             }
 
-            // move e desenha projéteis
             ctx.fillStyle = '#6666ff';
             for (let i = projeteis.length - 1; i >= 0; i--) {
                 const p = projeteis[i];
@@ -201,12 +195,26 @@
                 ctx.fillRect(p.x, p.y, 5, 5);
             }
 
+            const recordes = JSON.parse(localStorage.getItem('recordes') || '[]');
+            renderRecordes(recordes);
+
+            function renderRecordes(recordes) {
+                const lista = document.getElementById('lista-recordes');
+                if (!recordes.length) return;
+                lista.innerHTML = recordes.slice(0, 5).map((r, i) => `
+                    <li class="placar-item">
+                        <span class="placar-pos">${i + 1}</span>
+                        <span class="placar-nome">${r.pontos} pts</span>
+                        <span class="placar-pontos">${r.tempo}s</span>
+                    </li>
+                `).join('');
+            }
+
             requestAnimationFrame(loop);
         }
 
         loop();
 
-        // ── recordes ──────────────────────────────────────────────────
         function renderRecordes(recordes) {
             const lista = document.getElementById('lista-recordes');
             if (!recordes.length) return;

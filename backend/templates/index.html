@@ -16,6 +16,9 @@
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     let posJogador = {x: 175, y: 175};
+    let angulo = 0;
+    let velX = 0;
+    let velY = 0;
     let posInimigo = {x: 300, y: 300};
     let hpInimigo = 3;
     let xp = 0;
@@ -28,69 +31,84 @@
     let velocidadeProjetil = 5;
     let cooldownAtual = 500;
     let pausado = false;
+    let tempoInicio = null;
     let projeteis = [];
+    let velocidadeJogador = 5;
     const teclas = {cima: false, baixo: false, esquerda: false, direita: false}
 
     const upgrades = [
-    { nome: 'Ataque mais rápido', descricao: 'Cooldown reduzido em 100ms', efeito: () => { cooldownAtual = Math.max(100, cooldownAtual - 100); } },
-    { nome: 'Projétil mais veloz', descricao: 'Velocidade do projétil +2', efeito: () => { velocidadeProjetil += 2; } },
-    { nome: 'Mais dano', descricao: 'Inimigo morre mais rápido', efeito: () => { danoProjetil += 1; } },
-    { nome: 'Movimento mais rápido', descricao: 'Velocidade do jogador +2', efeito: () => { velocidadeJogador += 2; } },
-];
+        { nome: 'Ataque mais rápido', descricao: 'Cooldown reduzido em 100ms', efeito: () => { cooldownAtual = Math.max(100, cooldownAtual - 100); } },
+        { nome: 'Projétil mais veloz', descricao: 'Velocidade do projétil +2', efeito: () => { velocidadeProjetil += 2; } },
+        { nome: 'Mais dano', descricao: 'Inimigo morre mais rápido', efeito: () => { danoProjetil += 1; } },
+        { nome: 'Movimento mais rápido', descricao: 'Velocidade do jogador +2', efeito: () => { velocidadeJogador += 2; } },
+    ];
 
-let velocidadeJogador = 5;
+    function mostrarUpgrades() {
+        pausado = true;
+        const sorteados = [...upgrades].sort(() => Math.random() - 0.5).slice(0, 3);
 
-function mostrarUpgrades() {
-    pausado = true;
-    const sorteados = [...upgrades].sort(() => Math.random() - 0.5).slice(0, 3);
+        let modal = document.getElementById('modal-upgrade');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'modal-upgrade';
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                display: flex; flex-direction: column; align-items: center;
+                justify-content: center; gap: 16px;
+                background: rgba(0,0,0,0.75); z-index: 10;
+                font-family: monospace; color: white;
+            `;
+            document.body.appendChild(modal);
+        }
 
-    let modal = document.getElementById('modal-upgrade');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'modal-upgrade';
-        modal.style.cssText = `
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            display: flex; flex-direction: column; align-items: center;
-            justify-content: center; gap: 16px;
-            background: rgba(0,0,0,0.75); z-index: 10;
-            font-family: monospace; color: white;
+        modal.innerHTML = `
+            <h2 style="font-size: 1.8rem; margin-bottom: 8px;">NÍVEL ${nivel}!</h2>
+            <p style="color: #aaa; margin-bottom: 16px;">Escolha um upgrade:</p>
+            ${sorteados.map((u, i) => `
+                <button data-i="${i}" style="
+                    background: #1a1a2e; border: 1px solid #5050ff;
+                    color: white; font-family: monospace; font-size: 1rem;
+                    padding: 16px 32px; width: 300px; cursor: pointer;
+                    border-radius: 4px; text-align: left;
+                ">
+                    <strong>${u.nome}</strong><br>
+                    <span style="color: #aaa; font-size: 0.85rem;">${u.descricao}</span>
+                </button>
+            `).join('')}
         `;
-        document.body.appendChild(modal);
+
+        modal.querySelectorAll('button').forEach((btn, i) => {
+            btn.onmouseenter = () => btn.style.background = '#2a2a4e';
+            btn.onmouseleave = () => btn.style.background = '#1a1a2e';
+            btn.onclick = () => {
+                sorteados[i].efeito();
+                modal.remove();
+                pausado = false;
+                requestAnimationFrame(gameLoop);
+            };
+        });
     }
 
-    modal.innerHTML = `
-        <h2 style="font-size: 1.8rem; margin-bottom: 8px;">NÍVEL ${nivel}!</h2>
-        <p style="color: #aaa; margin-bottom: 16px;">Escolha um upgrade:</p>
-        ${sorteados.map((u, i) => `
-            <button data-i="${i}" style="
-                background: #1a1a2e; border: 1px solid #5050ff;
-                color: white; font-family: monospace; font-size: 1rem;
-                padding: 16px 32px; width: 300px; cursor: pointer;
-                border-radius: 4px; text-align: left;
-            ">
-                <strong>${u.nome}</strong><br>
-                <span style="color: #aaa; font-size: 0.85rem;">${u.descricao}</span>
-            </button>
-        `).join('')}
-    `;
-
-    modal.querySelectorAll('button').forEach((btn, i) => {
-        btn.onmouseenter = () => btn.style.background = '#2a2a4e';
-        btn.onmouseleave = () => btn.style.background = '#1a1a2e';
-        btn.onclick = () => {
-            sorteados[i].efeito();
-            modal.remove();
-            pausado = false;
-            requestAnimationFrame(gameLoop);
-        };
-    });
-}
+    function desenharNave(x, y, angulo) {
+        ctx.save();
+        ctx.translate(x + 15, y + 15);
+        ctx.rotate(angulo);
+        ctx.beginPath();
+        ctx.moveTo(0, -18);
+        ctx.lineTo(12, 12);
+        ctx.lineTo(-12, 12);
+        ctx.closePath();
+        ctx.fillStyle = 'white';
+        ctx.fill();
+        ctx.restore();
+    }
 
     function desenhar() {
         if (!posJogador || !posInimigo) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = 'black';
-        ctx.fillRect(posJogador.x, posJogador.y, 30, 30);
+
+        desenharNave(posJogador.x, posJogador.y, angulo);
+
         ctx.fillStyle = 'red';
         ctx.fillRect(posInimigo.x, posInimigo.y, 30, 30);
         ctx.fillStyle = 'blue';
@@ -161,8 +179,11 @@ function mostrarUpgrades() {
                 xpProximoNivel = 10;
                 velocidadeInimigo = 1;
                 projeteis = [];
+                angulo = 0;
+                tempoInicio = null;
                 ctx.textAlign = 'left';
                 canvas.onclick = null;
+                canvas.onmousemove = null;
                 requestAnimationFrame(gameLoop);
             }
         };
@@ -182,25 +203,41 @@ function mostrarUpgrades() {
         };
     }
 
-    function gameLoop(agora) {
-
+   function gameLoop(agora) {
         if (pausado) return;
+
+        if (!tempoInicio) tempoInicio = agora;
+        const tempoPassado = Math.floor((agora - tempoInicio) / 10000);
+        const velocidadeBonus = tempoPassado * 0.3;
+
         let dx = 0, dy = 0;
-        if (teclas.cima) dy = -velocidadeJogador;
-        if (teclas.baixo) dy = velocidadeJogador;
-        if (teclas.esquerda) dx = -velocidadeJogador;
-        if (teclas.direita) dx = velocidadeJogador;
+            if (teclas.cima) dy = -velocidadeJogador;
+            if (teclas.baixo) dy = velocidadeJogador;
+            if (teclas.esquerda) dx = -velocidadeJogador;
+            if (teclas.direita) dx = velocidadeJogador;
 
-        if (dx !== 0 || dy !== 0) {
-            posJogador.x = Math.max(0, Math.min(posJogador.x + dx, canvas.width - 30));
-            posJogador.y = Math.max(0, Math.min(posJogador.y + dy, canvas.height - 30));
-        }
+            if (dx !== 0 || dy !== 0) {
+                angulo = Math.atan2(dx, -dy);
+                velX += dx * 0.3;
+                velY += dy * 0.3;
+            }
 
-        if (posInimigo.x < posJogador.x) posInimigo.x += velocidadeInimigo;
-        else if (posInimigo.x > posJogador.x) posInimigo.x -= velocidadeInimigo;
+            velX *= 0.92;
+            velY *= 0.92;
 
-        if (posInimigo.y < posJogador.y) posInimigo.y += velocidadeInimigo;
-        else if (posInimigo.y > posJogador.y) posInimigo.y -= velocidadeInimigo;
+            posJogador.x += velX;
+            posJogador.y += velY;
+
+            if (posJogador.x < 0) posJogador.x = canvas.width;
+            if (posJogador.x > canvas.width) posJogador.x = 0;
+            if (posJogador.y < 0) posJogador.y = canvas.height;
+            if (posJogador.y > canvas.height) posJogador.y = 0;
+
+        if (posInimigo.x < posJogador.x) posInimigo.x += velocidadeInimigo + velocidadeBonus;
+        else if (posInimigo.x > posJogador.x) posInimigo.x -= velocidadeInimigo + velocidadeBonus;
+
+        if (posInimigo.y < posJogador.y) posInimigo.y += velocidadeInimigo + velocidadeBonus;
+        else if (posInimigo.y > posJogador.y) posInimigo.y -= velocidadeInimigo + velocidadeBonus;
 
         if (Math.abs(posInimigo.x - posJogador.x) < 30 &&
             Math.abs(posInimigo.y - posJogador.y) < 30) {
@@ -209,40 +246,44 @@ function mostrarUpgrades() {
             return;
         }
 
-        if (agora - ultimoAtaque > cooldownAtaque) {
+        if (agora - ultimoAtaque > cooldownAtual) {
             ultimoAtaque = agora;
             projeteis.push({
                 x: posJogador.x + 15,
                 y: posJogador.y + 15,
-                dx: posInimigo.x - posJogador.x,
-                dy: posInimigo.y - posJogador.y
+                dx: Math.sin(angulo),
+                dy: -Math.cos(angulo)
             });
         }
 
         for (let i = projeteis.length - 1; i >= 0; i--) {
             let p = projeteis[i];
-            let dist = Math.sqrt(p.dx * p.dx + p.dy * p.dy);
-            p.x += (p.dx / dist) * velocidadeProjetil;
-            p.y += (p.dy / dist) * velocidadeProjetil;
+            p.x += p.dx * velocidadeProjetil;
+            p.y += p.dy * velocidadeProjetil;
 
             if (p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height) {
                 projeteis.splice(i, 1);
                 continue;
             }
 
-                        if (p.x > posInimigo.x && p.x < posInimigo.x + 30 &&
+            if (p.x > posInimigo.x && p.x < posInimigo.x + 30 &&
                 p.y > posInimigo.y && p.y < posInimigo.y + 30) {
                 projeteis.splice(i, 1);
                 hpInimigo -= danoProjetil;
                 if (hpInimigo <= 0) {
-                    posInimigo = {x: 300, y: 300};
+                    let nx, ny;
+                    do {
+                        nx = Math.random() * (canvas.width - 60) + 30;
+                        ny = Math.random() * (canvas.height - 60) + 30;
+                    } while (Math.abs(nx - posJogador.x) < 100 && Math.abs(ny - posJogador.y) < 100);
+                    posInimigo = {x: nx, y: ny};
                     hpInimigo = 3;
                     xp += 1;
                     if (xp >= xpProximoNivel) {
                         xp = 0;
                         nivel += 1;
                         xpProximoNivel = nivel * 10;
-                        velocidadeInimigo += 1;
+                        velocidadeInimigo += 0.5;
                         mostrarUpgrades();
                         return;
                     }
